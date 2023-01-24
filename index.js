@@ -22,7 +22,7 @@ app.listen(PORT, () => console.log(`server listening on ${PORT}`));
 
 // *** ENDPOINTS
 app.get('/', (request, response) => response.status(200).send('Welcome'));
-
+app.get('/health', (request, response) => response.status(200).send('Health OK'));                 // *** For render.com health check
 
 app.get('*', (request, response) => response.status(404).send('Not available'));
 app.use((error, request, response, next) => response.status(500).send(error.message));
