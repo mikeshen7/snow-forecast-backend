@@ -4,62 +4,54 @@
 // User input can be either:
 // 1. Address
 // 2. Zip
-// 3. City
 // 3. Landmark
 
 // *** REQUIRES
 const axios = require('axios');
-let cache = require('./cache.js');
+let cache = require('./cache');
 
 // ******** Global Variables
 let lat;
 let lon;
+let locationData = [];
 
-async function getLocation(request, response) {
+async function getLocation(request, response, next) {
   // http://localhost:3001/location?city=Seattle
   try {
-    address = request.query.address;
-    zip = request.query.zip;
-    city = request.query.city;
-    landmark = request.query.landmark;
+    let q = request.query.q;
 
-    let key = `${city}Location`;
+    let key = `${q}Location`;
 
     if (cache[key] && ((Date.now() - cache[key].timeStamp) < 14400000)) {
+      console.log('using cache data');
       locationData = cache[key].data;
     } else {
-      let url = `https://us1.locationiq.com/v1/search?key=${process.env.LOCATIONIQ_API_KEY}&limit=1&format=json&q=${city}`;
+      console.log('using API data');
+      let endpoint = 'https://us1.locationiq.com/v1/search?&format=json&limit=1';
+      let url = `${endpoint}&key=${process.env.LOCATIONIQ_API_KEY}&q=${q}`;
 
       let dataToGroom = await axios.get(url);
-      locationData.lat = dataToGroom.data[0].lat;
-      locationData.lon = dataToGroom.data[0].lon;
-      locationData.display_name = dataToGroom.data[0].display_name;
-      locationData.mapUrl = `https://maps.locationiq.com/v3/staticmap?key=${process.env.LOCATIONIQ_API_KEY}&center=${locationData.lat},${dataToGroom.data[0].lon}&zoom=13`;
-      locationData.show = 'flex';
-      locationData.error = false;
-      locationData.errorMessage = '';
-      locationData.errorCode = '';
-      locationData.timeStamp = Date.now();
+      dataToGroom = dataToGroom.data[0];
+
+      locationData = {
+        lat: dataToGroom.lat,
+        lon: dataToGroom.lon,
+      }
 
       // Cache results from API call
       cache[key] = {
         data: locationData,
-        timeStamp: locationData.timeStamp,
+        timeStamp: Date.now(),
       };
+
+      console.log(cache);
     }
 
     response.status(200).send(locationData);
 
   } catch (error) {
-    locationData.lat = '';
-    locationData.lon = '';
-    locationData.display_name = '';
-    locationData.mapUrl = '';
-    locationData.show = 'none';
-    locationData.error = true;
-    locationData.errorMessage = error.message;
-    locationData.errorCode = error.response.status;
-    response.status(error.response.status).send(locationData);
+    console.log(error.message);
+    next(error);
   }
 }
 
