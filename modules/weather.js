@@ -114,9 +114,13 @@ async function getDatabaseWeather(request, response, next) {
     console.log(resortName);
 
     // let dbResult = await hourlyWeatherDb.find({ resort: resortName });
-    let dbResult = await hourlyWeatherDb.find({ resort: resortName, dateTimeEpoch: { $gte: startDate }, date: 7 });
+    let dbResult = await hourlyWeatherDb.find({ resort: resortName, dateTimeEpoch: { $gte: startDate } });
+    dbResult.sort((a,b) => (a.dateTimeEpoch > b.dateTimeEpoch) ? 1 : -1);
+    
     console.log(`current date ${date}`);
     console.log(`start date ${startDate}`);
+    console.log(dbResult);
+
     response.status(200).send(dbResult)
 
   } catch (error) {
@@ -126,7 +130,7 @@ async function getDatabaseWeather(request, response, next) {
 }
 
 weatherSchedule();
-// updateWeatherArray()
+updateWeatherArray()
 
 
 module.exports = { updateWeatherArray, getDatabaseWeather };
