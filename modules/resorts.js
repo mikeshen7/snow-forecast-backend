@@ -1,10 +1,12 @@
 'use strict';
 
 const db = require("../models/skiResortDb");
+const weather = require('../modules/weather');
 
 async function create(request, response, next) {  // post
   try {
     let createdResort = await db.create(request.body);
+    await weather.getWeather(request.body.name);
     response.status(200).send(createdResort);
 
   } catch (error) {
