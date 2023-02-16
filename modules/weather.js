@@ -21,15 +21,14 @@ async function weatherSchedule() {
 
 async function updateWeatherArray() {
   let currentDate = new Date(Date.now());
-  console.log('*******************************************************************************************');
-  console.log('******* getting weather: ', currentDate[Symbol.toPrimitive]('string'));
-  console.log('*******************************************************************************************');
   resortArray = await skiResortDb.find({});
-  resortArray.forEach((resort) => getWeather(resort));
+  resortArray.forEach(async (resort) => await getWeather(resort));
   return hourlyWeatherArray;
 }
 
 async function getWeather(resort) {
+  console.log(`******************************************** getting weather for ${resort.name} on ${Date()} ********************`);
+
   let lat = resort.lat;
   let lon = resort.lon;
   let url = `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/${lat},${lon}?key=${process.env.VISUAL_CROSSING_API_KEY}&options=nonulls`
@@ -42,9 +41,6 @@ async function getWeather(resort) {
     // Get and parse weather data
     weatherData = await axios.get(url);
     weatherData = weatherData.data;
-
-    // console.log(weatherData.days[0].hours[0]);
-    // console.log(weatherData.days[0].hours[1]);
 
     // FOR EACH LOOP
     weatherData.days.forEach(async (day, dayIndex, baseArray) => {
@@ -89,20 +85,25 @@ async function getWeather(resort) {
 
   let newData;
 
-  hourlyWeatherArray.forEach(async (forecast, index) => {
-    // TODO: see if key exists in database
-    newData = await hourlyWeatherDb.findOne({ key: forecast.key });
+  try {
+    hourlyWeatherArray.forEach(async (forecast, index) => {
+      // TODO: see if key exists in database
+      newData = await hourlyWeatherDb.findOne({ key: forecast.key });
 
-    // TODO: if key exists, update.  If not, create.
-    if (newData === null) {
-      await hourlyWeatherDb.create(forecast);
-      console.log('create');
-    } else {
-      await hourlyWeatherDb.findOneAndUpdate({ key: forecast.key }, forecast, { new: true, overwrite: true })
-      // console.log('update');
-    }
-  })
+      // TODO: if key exists, update.  If not, create.
+      if (newData === null) {
+        await hourlyWeatherDb.create(forecast);
+        // console.log('create');
+      } else {
+        await hourlyWeatherDb.findOneAndUpdate({ key: forecast.key }, forecast, { new: true, overwrite: true })
+        // console.log('update');
+      }
+    })
+  } catch (error) {
+    console.log(error.message);
+  }
 }
+
 
 async function getDatabaseWeather(request, response, next) {
   try {
@@ -110,16 +111,9 @@ async function getDatabaseWeather(request, response, next) {
     let date = Date.now();
     let startDate = (date - 86400000); // one day ago
 
-    console.log(startDate);
-    console.log(resortName);
-
     // let dbResult = await hourlyWeatherDb.find({ resort: resortName });
     let dbResult = await hourlyWeatherDb.find({ resort: resortName, dateTimeEpoch: { $gte: startDate } });
-    dbResult.sort((a,b) => (a.dateTimeEpoch > b.dateTimeEpoch) ? 1 : -1);
-    
-    console.log(`current date ${date}`);
-    console.log(`start date ${startDate}`);
-    console.log(dbResult);
+    dbResult.sort((a, b) => (a.dateTimeEpoch > b.dateTimeEpoch) ? 1 : -1);
 
     response.status(200).send(dbResult)
 
@@ -130,7 +124,6 @@ async function getDatabaseWeather(request, response, next) {
 }
 
 weatherSchedule();
-updateWeatherArray()
+updateWeatherArray();
 
-
-module.exports = { updateWeatherArray, getDatabaseWeather };
+module.exports = { updateWeatherArray, getDatabaseWeather, getWeather };

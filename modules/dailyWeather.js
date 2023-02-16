@@ -46,50 +46,60 @@ async function updateDailyWeather() {
 
   // Loop through all resorts
   resorts.forEach(async (resort) => {
+    console.log(`******************************************** Calculating daily weather for ${resort} on ${Date()} ********************`);
+
+
     // Get database weather info starting from startEpoch, sorted by epoch time
     let resortWeather = await getDatabaseWeather(resort, startEpoch);
 
-    for (let day = 0; day < 15; day++) {
-      // *** Calc for 6PM to 6AM
-      // currentDay is currently Date object at 18:00
-      startEpoch = currentDay[Symbol.toPrimitive]('number');
-      endEpoch = startEpoch + 43200000;
-      tempDataObject = calcDailyWeather(resort, resortWeather, currentDay, startEpoch, endEpoch);
-      tempDataObject.time = 'Night';
-      dailyWeatherArray.push(tempDataObject);
+    if (resortWeather.length != 0) {
 
-      // *** Calc for 6AM to 12PM
-      currentDay.setHours(currentDay.getHours() + 12);
-      startEpoch = currentDay[Symbol.toPrimitive]('number');
-      endEpoch = startEpoch + 21600000;
-      tempDataObject = calcDailyWeather(resort, resortWeather, currentDay, startEpoch, endEpoch);
-      tempDataObject.time = 'AM';
-      dailyWeatherArray.push(tempDataObject);
+      for (let day = 0; day < 15; day++) {
+        // *** Calc for 6PM to 6AM
+        // currentDay is currently Date object at 18:00
+        startEpoch = currentDay[Symbol.toPrimitive]('number');
+        endEpoch = startEpoch + 43200000;
+        tempDataObject = calcDailyWeather(resort, resortWeather, currentDay, startEpoch, endEpoch);
+        tempDataObject.time = 'Night';
+        dailyWeatherArray.push(tempDataObject);
 
-      // *** Calc for 12PM to 6PM
-      currentDay.setHours(currentDay.getHours() + 6);
-      startEpoch = currentDay[Symbol.toPrimitive]('number');
-      endEpoch = startEpoch + 21600000;
-      tempDataObject = calcDailyWeather(resort, resortWeather, currentDay, startEpoch, endEpoch);
-      tempDataObject.time = 'PM';
-      dailyWeatherArray.push(tempDataObject);
+        // *** Calc for 6AM to 12PM
+        currentDay.setHours(currentDay.getHours() + 12);
+        startEpoch = currentDay[Symbol.toPrimitive]('number');
+        endEpoch = startEpoch + 21600000;
+        tempDataObject = calcDailyWeather(resort, resortWeather, currentDay, startEpoch, endEpoch);
+        tempDataObject.time = 'AM';
+        dailyWeatherArray.push(tempDataObject);
 
-    }
+        // *** Calc for 12PM to 6PM
+        currentDay.setHours(currentDay.getHours() + 6);
+        startEpoch = currentDay[Symbol.toPrimitive]('number');
+        endEpoch = startEpoch + 21600000;
+        tempDataObject = calcDailyWeather(resort, resortWeather, currentDay, startEpoch, endEpoch);
+        tempDataObject.time = 'PM';
+        dailyWeatherArray.push(tempDataObject);
 
-    // TODO: Update / create database
-    dailyWeatherArray.forEach(async (forecast, index) => {
-      // TODO: see if key exists in database
-      let newData = await dailyWeatherDb.findOne({ key: forecast.key });
-
-      // TODO: if key exists, update.  If not, create.
-      if (newData === null) {
-        await dailyWeatherDb.create(forecast);
-        // console.log('create');
-      } else {
-        await dailyWeatherDb.findOneAndUpdate({ key: forecast.key }, forecast, { new: true, overwrite: true })
-        // console.log('update');
       }
-    })
+
+      try {
+        // TODO: Update / create database
+        dailyWeatherArray.forEach(async (forecast, index) => {
+          // TODO: see if key exists in database
+          let newData = await dailyWeatherDb.findOne({ key: forecast.key });
+
+          // TODO: if key exists, update.  If not, create.
+          if (newData === null) {
+            await dailyWeatherDb.create(forecast);
+            // console.log('create');
+          } else {
+            await dailyWeatherDb.findOneAndUpdate({ key: forecast.key }, forecast, { new: true, overwrite: true })
+            // console.log('update');
+          }
+        })
+      } catch (error) {
+        console.log(error.message);
+      }
+    }
   })
 }
 
@@ -112,6 +122,8 @@ function calcDailyWeather(resort, weatherArray, currentDay, startEpoch, endEpoch
   let totalFeelsLike = 0;
 
   tempDataArray.forEach((element) => {
+    // console.log(element.temp);
+
     count++;
     totalPrecipProb += element.precipProb;
     totalPrecipType.push(element.precipType);
@@ -125,6 +137,24 @@ function calcDailyWeather(resort, weatherArray, currentDay, startEpoch, endEpoch
     totalTemp += element.temp;
     totalFeelsLike += element.feelsLike;
   })
+
+  if (count === 0) {
+    totalPrecipProb = -999;
+    totalWindspeed = -999;
+    totalCloudCover = -999;
+    totalVisibility = -999;
+    totalTemp = -999;
+    totalFeelsLike = -999;
+
+  } else {
+    totalPrecipProb = totalPrecipProb / count;
+    totalWindspeed = totalWindspeed / count;
+    totalCloudCover = totalCloudCover / count;
+    totalVisibility = totalVisibility / count;
+    totalTemp = totalTemp / count;
+    totalFeelsLike = totalFeelsLike / count;
+  }
+
 
   // Flatten and take out repeats
   let tempArray = [];
@@ -154,18 +184,20 @@ function calcDailyWeather(resort, weatherArray, currentDay, startEpoch, endEpoch
     date: currentDay.getDate(),
     month: currentDay.getMonth() + 1,
     year: currentDay.getFullYear(),
-    precipProb: totalPrecipProb / count,
+    precipProb: totalPrecipProb,
     precip: totalPrecip,
     precipType: totalPrecipType,
     snow: totalSnow,
-    windspeed: totalWindspeed / count,
-    cloudCover: totalCloudCover / count,
-    visibility: totalVisibility / count,
+    windspeed: totalWindspeed,
+    cloudCover: totalCloudCover,
+    visibility: totalVisibility,
     conditions: totalConditions,
     icon: totalIcon,
-    temp: totalTemp / count,
-    feelsLike: totalFeelsLike / count,
+    temp: totalTemp,
+    feelsLike: totalFeelsLike,
   }
+
+
 
   return tempDataObject;
 }

@@ -9,7 +9,7 @@ const collectionName = 'hourlyWeatherDb';
 // Create Schema
 const hourlyWeatherSchema = new Schema(
   {
-    key: { type: String, required: true },
+    key: { type: String, required: true,  unique: true},
     resort: { type: String, required: true },
     dateTimeEpoch: { type: Number, required: true }, // in seconds since 1970
     dayOfWeek: { type: Number }, // 1-7
