@@ -6,6 +6,7 @@ const cors = require('cors');                    // *** Middleware
 const mongoose = require('mongoose');            // *** Database
 const resorts = require('./modules/resorts');
 const weather = require('./modules/weather');
+const dailyWeather = require('./modules/dailyWeather');
 // const getLocation = require('./modules/location');
 
 
@@ -53,9 +54,4 @@ app.use((error, request, response, next) => response.status(500).send(error.mess
 
 
 // *** FUNCTIONS
-
-
-
-
-
 
