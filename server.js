@@ -5,7 +5,7 @@ const express = require('express');              // *** Backend server
 const cors = require('cors');                    // *** Middleware 
 const mongoose = require('mongoose');            // *** Database
 const resorts = require('./modules/resorts');
-const weather = require('./modules/weather');
+const hourlyWeather = require('./modules/hourlyWeather');
 const dailyWeather = require('./modules/dailyWeather');
 // const getLocation = require('./modules/location');
 
@@ -32,16 +32,18 @@ const PORT = process.env.PORT || 3002;
 app.listen(PORT, () => console.log(`server listening on ${PORT}`));
 
 // *** Ski Resort Endpoints
-app.post('/resorts', (request, response, next) => resorts.create(request, response, next));
-app.get('/resorts', (request, response, next) => resorts.readAll(request, response, next));
-app.get('/resorts/:resortName', (request, response, next) => resorts.readOne(request, response, next));
-app.put('/resorts/:resortName', (request, response, next) => resorts.update(request, response, next));
-app.delete('/resorts/:resortName', (request, response, next) => resorts.remove(request, response, next));
+app.post('/resorts', (request, response, next) => resorts.endpointCreateResort(request, response, next));
+app.get('/resorts', (request, response, next) => resorts.endpointReadAllResort(request, response, next));
+app.get('/resorts/:resortName', (request, response, next) => resorts.endpointReadOneResort(request, response, next));
+app.put('/resorts/:resortName', (request, response, next) => resorts.endpointUpdateResort(request, response, next));
+app.delete('/resorts/:resortName', (request, response, next) => resorts.endpointRemoveResort(request, response, next));
 
-app.get('/weather/:resortName', (request, response, next) => weather.getDatabaseWeather(request, response, next));
+// *** Weather Endpoints
+app.get('/hourlyWeather/:resortName', (request, response, next) => hourlyWeather.endPointReadHourlyWeather(request, response, next));
 app.get('/dailyWeather/:resortName', (request, response, next) => dailyWeather.getDailyWeather(request, response, next));
 
-// *** ENDPOINTS
+
+// *** Misc ENDPOINTS
 app.get('/', (request, response) => response.status(200).send('Welcome'));
 app.get('/health', (request, response) => response.status(200).send('Health OK'));
 
