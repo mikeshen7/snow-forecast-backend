@@ -83,18 +83,8 @@ async function updateDailyWeather() {
 
       try {
         // TODO: Update / create database
-        dailyWeatherArray.forEach(async (forecast, index) => {
-          // TODO: see if key exists in database
-          let newData = await dailyWeatherDb.findOne({ key: forecast.key });
-
-          // TODO: if key exists, update.  If not, create.
-          if (newData === null) {
-            await dailyWeatherDb.create(forecast);
-            // console.log('create');
-          } else {
-            await dailyWeatherDb.findOneAndUpdate({ key: forecast.key }, forecast, { new: true, overwrite: true })
-            // console.log('update');
-          }
+        dailyWeatherArray.forEach(async (forecast) => {
+          await dailyWeatherDb.findOneAndUpdate({ key: forecast.key }, forecast, { upsert: true });
         })
       } catch (error) {
         console.log(error.message);
@@ -245,7 +235,27 @@ async function getDatabaseWeather(resortName, startEpoch) {
   }
 }
 
+async function getDailyWeather(request, response, next) {
+  try {
+    let resortName = request.params.resortName;
+    let date = Date.now();
+    let startDate = (date - 86400000); // one day ago
+
+    // let dbResult = await dailyWeatherDb.find({ resort: resortName});
+    let dbResult = await dailyWeatherDb.find({ resort: resortName, dateTimeEpoch: { $gte: startDate } });
+    dbResult.sort((a, b) => (a.dateTimeEpoch > b.dateTimeEpoch) ? 1 : -1);
+
+    response.status(200).send(dbResult)
+
+  } catch (error) {
+    console.log(error.message);
+    next(error);
+  }
+}
+
+
+
 weatherSchedule();
 updateDailyWeather();
 
-module.exports = { updateDailyWeather };
+module.exports = { updateDailyWeather, getDailyWeather };
