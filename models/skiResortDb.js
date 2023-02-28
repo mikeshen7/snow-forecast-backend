@@ -12,6 +12,7 @@ const skiResortDbSchema = new Schema(
     name: { type: String, required: true },
     lat: { type: Number, required: true },
     lon: { type: Number, required: true },
+    utc: {type: Number, required: true }
   },
   { collection: collectionName }
 );

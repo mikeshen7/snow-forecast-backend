@@ -64,16 +64,14 @@ async function updateDailyWeather() {
         dailyWeatherArray.push(tempDataObject);
 
         // *** Calc for 6AM to 12PM
-        currentDay.setHours(currentDay.getHours() + 12);
-        startEpoch = currentDay[Symbol.toPrimitive]('number');
+        startEpoch = endEpoch;
         endEpoch = startEpoch + 21600000;
         tempDataObject = calcDailyWeather(resort, resortWeather, currentDay, startEpoch, endEpoch);
         tempDataObject.time = 'AM';
         dailyWeatherArray.push(tempDataObject);
 
         // *** Calc for 12PM to 6PM
-        currentDay.setHours(currentDay.getHours() + 6);
-        startEpoch = currentDay[Symbol.toPrimitive]('number');
+        startEpoch = endEpoch;
         endEpoch = startEpoch + 21600000;
         tempDataObject = calcDailyWeather(resort, resortWeather, currentDay, startEpoch, endEpoch);
         tempDataObject.time = 'PM';
@@ -87,7 +85,7 @@ async function updateDailyWeather() {
           await dailyWeatherDb.findOneAndUpdate({ key: forecast.key }, forecast, { upsert: true });
         })
       } catch (error) {
-        console.log(error.message);
+        console.log(error.message, 'dailyWeather.js updateDailyWeather');
       }
     }
   })
@@ -231,7 +229,7 @@ async function getDatabaseWeather(resortName, startEpoch) {
     // console.log('get getDatabaseWeather', dbResult);
     return dbResult;
   } catch (error) {
-    console.log(error.message);
+    console.log(error.message, 'dailyWeather.js getDatabaseWeather');
   }
 }
 
@@ -248,14 +246,14 @@ async function getDailyWeather(request, response, next) {
     response.status(200).send(dbResult)
 
   } catch (error) {
-    console.log(error.message);
+    console.log(error.message, 'dailyWeather.js getDailyWeather');
     next(error);
   }
 }
 
 
 
-weatherSchedule();
-updateDailyWeather();
+// weatherSchedule();
+// updateDailyWeather();
 
 module.exports = { updateDailyWeather, getDailyWeather };
