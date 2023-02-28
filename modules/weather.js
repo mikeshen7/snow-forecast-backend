@@ -58,7 +58,7 @@ async function getWeather(resort) {
           month: currentDate.getMonth() + 1,
           year: currentDate.getFullYear(),
           dateTime: hour.datetime,
-          hour: currentDate.getHours(),
+          hour: currentDate.getUTCHours() - 8,
           min: currentDate.getMinutes(),
           precipProb: hour.precipprob,
           precipType: hour.preciptype,
