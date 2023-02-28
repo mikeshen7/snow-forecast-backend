@@ -9,7 +9,7 @@ const collectionName = 'dailyWeatherDb';
 // Create Schema
 const dailyWeatherSchema = new Schema(
   {
-    key: { type: String, required: true },
+    key: { type: String, required: true, unique: true},
     resort: { type: String, required: true },
     dateTimeEpoch: { type: Number, required: true }, // in milliseconds since 1970, of the start time (i.e. 6AM, 12PM, 6PM)
     time: { type: String }, // AM, PM, NT

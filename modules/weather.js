@@ -86,24 +86,14 @@ async function getWeather(resort) {
   let newData;
 
   try {
-    hourlyWeatherArray.forEach(async (forecast, index) => {
-      // TODO: see if key exists in database
-      newData = await hourlyWeatherDb.findOne({ key: forecast.key });
-
-      // TODO: if key exists, update.  If not, create.
-      if (newData === null) {
-        await hourlyWeatherDb.create(forecast);
-        // console.log('create');
-      } else {
-        await hourlyWeatherDb.findOneAndUpdate({ key: forecast.key }, forecast, { new: true, overwrite: true })
-        // console.log('update');
-      }
+    hourlyWeatherArray.forEach(async (forecast) => {
+      // Update.  If does not exist, create
+      await hourlyWeatherDb.findOneAndUpdate({ key: forecast.key }, forecast, { upsert: true });
     })
   } catch (error) {
     console.log(error.message);
   }
 }
-
 
 async function getDatabaseWeather(request, response, next) {
   try {

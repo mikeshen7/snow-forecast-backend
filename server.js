@@ -38,9 +38,8 @@ app.get('/resorts/:resortName', (request, response, next) => resorts.readOne(req
 app.put('/resorts/:resortName', (request, response, next) => resorts.update(request, response, next));
 app.delete('/resorts/:resortName', (request, response, next) => resorts.remove(request, response, next));
 
-// app.put('/weather', () => weather.updateWeatherArray());
 app.get('/weather/:resortName', (request, response, next) => weather.getDatabaseWeather(request, response, next));
-
+app.get('/dailyWeather/:resortName', (request, response, next) => dailyWeather.getDailyWeather(request, response, next));
 
 // *** ENDPOINTS
 app.get('/', (request, response) => response.status(200).send('Welcome'));
