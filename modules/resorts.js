@@ -3,7 +3,7 @@
 const resortDb = require("../models/skiResortDb");
 const hourlyWeather = require('../modules/hourlyWeather');
 const dailyWeather = require('../modules/dailyWeather');
-const resortCache = require('../modules/resortCache');
+const cache = require('../modules/cache');
 
 // ******** FUNCTIONS ***************************
 async function updateResortSchedule() {
@@ -43,7 +43,7 @@ async function dbCreateResort(resort) {
 async function dbReadAllResort() {
   try {
     console.log(`******************************************** getting resorts on ${Date()} ********************`);
-    resortCache['resorts'] = await resortDb.find({});
+    cache['resorts'] = await resortDb.find({});
 
 
   } catch (error) {
@@ -101,7 +101,7 @@ async function endpointCreateResort(request, response, next) {  // post
 
 async function endpointReadAllResort(request, response, next) {
   try {
-    response.status(200).send(resortCache['resorts']);
+    response.status(200).send(cache['resorts']);
 
   } catch (error) {
     console.log(error.message, 'resorts.js endpointReadAllResort');
@@ -112,7 +112,7 @@ async function endpointReadAllResort(request, response, next) {
 async function endpointReadOneResort(request, response, next) {
   try {
     let resortName = request.params.resortName;
-    let dbResult = resortCache['resorts'].filter((resort) => resort.name === resortName);
+    let dbResult = cache['resorts'].filter((resort) => resort.name === resortName);
 
     dbResult.length === 0
       ? response.status(200).send('Resort not found')

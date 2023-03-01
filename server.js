@@ -40,7 +40,7 @@ app.delete('/resorts/:resortName', (request, response, next) => resorts.endpoint
 
 // *** Weather Endpoints
 app.get('/hourlyWeather/:resortName', (request, response, next) => hourlyWeather.endPointReadHourlyWeather(request, response, next));
-app.get('/dailyWeather/:resortName', (request, response, next) => dailyWeather.getDailyWeather(request, response, next));
+app.get('/dailyWeather/:resortName', (request, response, next) => dailyWeather.endPointReadDailyWeather(request, response, next));
 
 
 // *** Misc ENDPOINTS

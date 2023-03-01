@@ -2,98 +2,94 @@
 
 // ******** REQUIRES ****************************
 const axios = require('axios');
+const cache = require('../modules/cache');
+const hourlyData = require('../modules/hourlyWeather');
 
 // *** Database connection and test
 const skiResortDb = require('../models/skiResortDb');
-// const weather = require('../modules/weather');
-const hourlyWeatherDb = require('../models/hourlyWeatherDb');
 const dailyWeatherDb = require('../models/dailyWeatherDb');
 
+// *** Global Variables
+let hourlyWeather = []; // Array of hourly weather objects for all resorts.  From cache.
+let dailyWeather = [];
+let resorts = []; // Array of resort objects, from resort cache
 
-async function weatherSchedule() {
-  // 7200000 = 2 hrs
-  // 300000 = 5 min
-  setInterval(updateDailyWeather, 1800000);
+
+async function updateDailyWeatherSchedule() {
+  // Initialize data
+  resorts = cache['resorts'];
+  hourlyWeather = cache['hourlyWeather'];
+  resorts.forEach((resort) => dbUpdateDailyWeather(resort));
+
+  // Update daily weather every hour (3600000 seconds)
+  setInterval(() => {
+    hourlyWeather = cache['hourlyWeather'];
+
+    resorts.forEach((resort) => dbUpdateDailyWeather(resort));
+  }, 3600000);
 }
 
-async function updateDailyWeather() {
+async function dbUpdateDailyWeather(resort) {
+  // Variables
+  let resortName = resort.name;
+  let tempDataObject = {};
+  let tempDailyWeather = [];
+  let startEpoch = calcResortStartTimeEpoch(resortName);
+  let endEpoch = calcResortStartTimeEpoch(resortName);
+
+  console.log(`******************************************** Calculating daily weather for ${resortName} on ${Date()} ********************`);
+  
   // divde day into 3 sections:
   // 6AM - 12PM (AM, 6 hrs)
   // 12PM - 6PM (PM, 6 hrs)
   // 6 PM - 6AM (Night, 12 hrs)
+    
+  if (hourlyWeather.length != 0) {
+    for (let day = 0; day < 14; day++) {
+      // *** Calc for 6PM to 6AM
+      startEpoch = endEpoch;
+      endEpoch = startEpoch + 43200000;
 
-  // Set start date to yesterday at 18:00
-  let currentDay = new Date(Date.now());
-  currentDay.setDate(currentDay.getDate() - 1);
-  currentDay.setHours(18, 0, 0, 0);
+      tempDataObject = calcDailyWeather(resort, startEpoch, endEpoch);
+      tempDataObject.time = 'Night';
+      tempDailyWeather.push(tempDataObject);
 
-  let startEpoch = currentDay[Symbol.toPrimitive]('number');
-  let endEpoch;
+      // *** Calc for 6AM to 12PM
+      startEpoch = endEpoch;
+      endEpoch = startEpoch + 21600000;
+      tempDataObject = calcDailyWeather(resort, startEpoch, endEpoch);
+      tempDataObject.time = 'AM';
+      tempDailyWeather.push(tempDataObject);
 
-  // other variables
-  let dailyWeatherArray = [];
-  let tempDataArray = [];
-  let tempDataObject = {};
-  let averageData = {};
-
-  // Create array of resort names
-  let resorts = [];
-  let temp = await skiResortDb.find();
-  resorts = temp.map((resort) => {
-    return resort.name;
-  })
-
-
-  // Loop through all resorts
-  resorts.forEach(async (resort) => {
-    console.log(`******************************************** Calculating daily weather for ${resort} on ${Date()} ********************`);
-
-
-    // Get database weather info starting from startEpoch, sorted by epoch time
-    let resortWeather = await getDatabaseWeather(resort, startEpoch);
-
-    if (resortWeather.length != 0) {
-
-      for (let day = 0; day < 15; day++) {
-        // *** Calc for 6PM to 6AM
-        // currentDay is currently Date object at 18:00
-        startEpoch = currentDay[Symbol.toPrimitive]('number');
-        endEpoch = startEpoch + 43200000;
-        tempDataObject = calcDailyWeather(resort, resortWeather, currentDay, startEpoch, endEpoch);
-        tempDataObject.time = 'Night';
-        dailyWeatherArray.push(tempDataObject);
-
-        // *** Calc for 6AM to 12PM
-        startEpoch = endEpoch;
-        endEpoch = startEpoch + 21600000;
-        tempDataObject = calcDailyWeather(resort, resortWeather, currentDay, startEpoch, endEpoch);
-        tempDataObject.time = 'AM';
-        dailyWeatherArray.push(tempDataObject);
-
-        // *** Calc for 12PM to 6PM
-        startEpoch = endEpoch;
-        endEpoch = startEpoch + 21600000;
-        tempDataObject = calcDailyWeather(resort, resortWeather, currentDay, startEpoch, endEpoch);
-        tempDataObject.time = 'PM';
-        dailyWeatherArray.push(tempDataObject);
-
-      }
-
-      try {
-        // TODO: Update / create database
-        dailyWeatherArray.forEach(async (forecast) => {
-          await dailyWeatherDb.findOneAndUpdate({ key: forecast.key }, forecast, { upsert: true });
-        })
-      } catch (error) {
-        console.log(error.message, 'dailyWeather.js updateDailyWeather');
-      }
+      // *** Calc for 12PM to 6PM
+      startEpoch = endEpoch;
+      endEpoch = startEpoch + 21600000;
+      tempDataObject = calcDailyWeather(resort, startEpoch, endEpoch);
+      tempDataObject.time = 'PM';
+      tempDailyWeather.push(tempDataObject);
     }
-  })
+    
+    try {
+      // Update or create database
+      tempDailyWeather.forEach(async (forecast) => {
+        await dailyWeatherDb.findOneAndUpdate({ key: forecast.key }, forecast, { upsert: true });
+      })
+
+      // Save to global variable
+      dailyWeather = await dailyWeatherDb.find({});
+
+    } catch (error) {
+      console.log(error.message, 'dailyWeather.js updateDailyWeather');
+    }
+  }
 }
 
-function calcDailyWeather(resort, weatherArray, currentDay, startEpoch, endEpoch) {
+function calcDailyWeather(resort, startEpoch, endEpoch) {
   // Filter data for specific time period
-  let tempDataArray = weatherArray.filter(hourlyWeather => (hourlyWeather.dateTimeEpoch >= startEpoch && hourlyWeather.dateTimeEpoch < endEpoch));
+  let dbResult = hourlyWeather.filter((forecast) => forecast.resort === resort.name);
+  dbResult = dbResult.filter((forecast) => forecast.dateTimeEpoch >= startEpoch);
+  dbResult = dbResult.filter((forecast) => forecast.dateTimeEpoch < endEpoch);
+  dbResult.sort((a, b) => (a.dateTimeEpoch > b.dateTimeEpoch) ? 1 : -1);
 
   // calc average / total data
   let count = 0;
@@ -109,7 +105,7 @@ function calcDailyWeather(resort, weatherArray, currentDay, startEpoch, endEpoch
   let totalTemp = 0;
   let totalFeelsLike = 0;
 
-  tempDataArray.forEach((element) => {
+  dbResult.forEach((element) => {
     // console.log(element.temp);
 
     count++;
@@ -163,15 +159,22 @@ function calcDailyWeather(resort, weatherArray, currentDay, startEpoch, endEpoch
   totalIcon.sort((a, b) => a > b ? 1 : -1);
   totalIcon = findMostFrequent(totalIcon);
 
+  let resortDate = hourlyData.calcResortDate(resort, startEpoch)
+
   // Create weather object
   let tempDataObject = {
-    key: resort + startEpoch,
-    resort: resort,
+    key: resort.name + startEpoch,
+    resort: resort.name,
+
+    startEpoch: startEpoch,
+    endEpoch: endEpoch,
     dateTimeEpoch: startEpoch,
-    dayOfWeek: currentDay.getDay() + 1,
-    date: currentDay.getDate(),
-    month: currentDay.getMonth() + 1,
-    year: currentDay.getFullYear(),
+
+    dayOfWeek: resortDate.day,
+    date: resortDate.date,
+    month: resortDate.month,
+    year: resortDate.year,
+
     precipProb: totalPrecipProb,
     precip: totalPrecip,
     precipType: totalPrecipType,
@@ -222,38 +225,55 @@ function findMostFrequent(array) {
   return mostFrequentData;
 }
 
-async function getDatabaseWeather(resortName, startEpoch) {
-  try {
-    let dbResult = await hourlyWeatherDb.find({ resort: resortName, dateTimeEpoch: { $gte: startEpoch } });
-    dbResult.sort((a, b) => (a.dateTimeEpoch > b.dateTimeEpoch) ? 1 : -1);
-    // console.log('get getDatabaseWeather', dbResult);
-    return dbResult;
-  } catch (error) {
-    console.log(error.message, 'dailyWeather.js getDatabaseWeather');
-  }
-}
+async function endPointReadDailyWeather(request, response, next) {
 
-async function getDailyWeather(request, response, next) {
   try {
     let resortName = request.params.resortName;
-    let date = Date.now();
-    let startDate = (date - 86400000); // one day ago
 
-    // let dbResult = await dailyWeatherDb.find({ resort: resortName});
-    let dbResult = await dailyWeatherDb.find({ resort: resortName, dateTimeEpoch: { $gte: startDate } });
+    console.log(`******************************************** getting endpoint daily weather for ${resortName} on ${Date()} ********************`);
+
+    // Set startDate to 6PM the previous day
+    let startDate = calcResortStartTimeEpoch(resortName);
+
+
+    // Filter for this resort only
+    let dbResult = dailyWeather.filter((forecast) => forecast.resort === resortName);
+    dbResult = dbResult.filter((forecast) => forecast.dateTimeEpoch >= startDate);
     dbResult.sort((a, b) => (a.dateTimeEpoch > b.dateTimeEpoch) ? 1 : -1);
 
     response.status(200).send(dbResult)
 
   } catch (error) {
-    console.log(error.message, 'dailyWeather.js getDailyWeather');
+    console.log(error.message, 'dailyWeather.js endPointReadDailyWeather');
     next(error);
   }
 }
 
+function calcResortStartTimeEpoch(resortName) {
+  let resort = resorts.filter((resort) => resort.name === resortName); // returns array
+  resort = resort[0]; // returns object
 
+  // Create Date object
+  let currentDate = new Date(Date.now());
+  currentDate.setMinutes(0);
+  currentDate.setSeconds(0);
+  currentDate.setMilliseconds(0);
 
-// weatherSchedule();
-// updateDailyWeather();
+  let currentDateEpoch = currentDate[Symbol.toPrimitive]('number');
 
-module.exports = { updateDailyWeather, getDailyWeather };
+  // Resort date in local time, adjusting for resort UTC time
+  let resortDate = currentDate;
+  resortDate.setHours(resortDate.getHours() + resort.utc);
+
+  // Calc hours to 6PM of previous day
+  let hoursToDelete = resortDate.getUTCHours() + 6;
+
+  let startTimeEpoch = currentDateEpoch - hoursToDelete * 3600000;
+
+  return startTimeEpoch;
+}
+
+// Delay starting schedule to allow resort cache to update.  Set to after hourlyWeather starts.
+setTimeout(updateDailyWeatherSchedule, 20000);
+
+module.exports = { dbUpdateDailyWeather, endPointReadDailyWeather };

@@ -1,7 +1,7 @@
 'use strict';
 // ******** REQUIRES ****************************
 const axios = require('axios');
-const resortCache = require('../modules/resortCache');
+const cache = require('../modules/cache');
 
 // *** Database connection and test
 const skiResortDb = require('../models/skiResortDb');
@@ -15,7 +15,8 @@ let resorts = []; // Array of resort objects, from resort cache
 // ******** FUNCTIONS ***************************
 async function updateHourlyWeatherSchedule() {
   // Initialize list of resorts
-  resorts = resortCache['resorts'];
+  resorts = cache['resorts'];
+  cache['hourlyWeather'] = await hourlyWeatherDb.find({})
 
   // Initialize hourly weather data array
   dbReadHourlyWeather();
@@ -26,7 +27,7 @@ async function updateHourlyWeatherSchedule() {
     apiReadHourlyWeather(resorts[resortIndex].name);
     dbReadHourlyWeather();
 
-    resorts = resortCache['resorts'];
+    resorts = cache['resorts'];
     resortIndex >= resorts.length - 1
       ? resortIndex = 0
       : resortIndex++
@@ -113,6 +114,10 @@ async function dbUpdateHourlyWeather(forecastData) {
       // Update.  If does not exist, create
       await hourlyWeatherDb.findOneAndUpdate({ key: forecast.key }, forecast, { upsert: true });
     })
+
+    // save to cache
+    cache['hourlyWeather'] = await hourlyWeatherDb.find({})
+
   } catch (error) {
     console.log(error.message, 'hourlyWeather.js dbUpdateHourlyWeather');
   }
@@ -124,6 +129,7 @@ async function dbReadHourlyWeather() {
     dbResults = await hourlyWeatherDb.find({});
     dbResults.sort((a, b) => a.key > b.key ? 1 : -1);
     hourlyWeather = dbResults;
+    return hourlyWeather;
   } catch (error) {
     console.log(error.message, 'hourlyWeather.js dbReadHourlyWeather');
   }
@@ -148,7 +154,7 @@ async function endPointReadHourlyWeather(request, response, next) {
     response.status(200).send(dbResult)
 
   } catch (error) {
-    console.log(error.message, 'hourlyWeather.js getDatabaseWeather');
+    console.log(error.message, 'hourlyWeather.js endPointReadHourlyWeather');
     next(error);
   }
 }
@@ -192,8 +198,8 @@ function calcResortStartTimeEpoch(resortName) {
   let resortDate = currentDate;
   resortDate.setHours(resortDate.getHours() + resort.utc);
 
-  // Calc hours to 6PM of previous day
-  let hoursToDelete = resortDate.getUTCHours() + 6;
+  // Calc hours to midnight of previous day
+  let hoursToDelete = resortDate.getUTCHours() + 24;
 
   let startTimeEpoch = currentDateEpoch - hoursToDelete * 3600000;
 
@@ -204,4 +210,4 @@ function calcResortStartTimeEpoch(resortName) {
 // Delay starting schedule to allow resort cache to update
 setTimeout(updateHourlyWeatherSchedule, 10000);
 
-module.exports = { apiReadHourlyWeather, endPointReadHourlyWeather };
+module.exports = { apiReadHourlyWeather, endPointReadHourlyWeather, calcResortDate };
