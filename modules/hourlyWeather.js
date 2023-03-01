@@ -37,6 +37,7 @@ async function updateHourlyWeatherSchedule() {
 async function apiReadHourlyWeather(resortName) {
   console.log(`******************************************** getting weather for ${resortName} on ${Date()} ********************`);
 
+  resorts = cache['resorts'];
   let resort = resorts.filter((resort) => resort.name === resortName); // returns array
   resort = resort[0]; // returns object
   let lat = resort.lat

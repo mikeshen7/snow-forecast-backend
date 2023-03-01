@@ -30,6 +30,8 @@ async function updateDailyWeatherSchedule() {
 }
 
 async function dbUpdateDailyWeather(resort) {
+  resorts = cache['resorts'];
+
   // Variables
   let resortName = resort.name;
   let tempDataObject = {};
@@ -38,12 +40,12 @@ async function dbUpdateDailyWeather(resort) {
   let endEpoch = calcResortStartTimeEpoch(resortName);
 
   console.log(`******************************************** Calculating daily weather for ${resortName} on ${Date()} ********************`);
-  
+
   // divde day into 3 sections:
   // 6AM - 12PM (AM, 6 hrs)
   // 12PM - 6PM (PM, 6 hrs)
   // 6 PM - 6AM (Night, 12 hrs)
-    
+
   if (hourlyWeather.length != 0) {
     for (let day = 0; day < 14; day++) {
       // *** Calc for 6PM to 6AM
@@ -68,7 +70,7 @@ async function dbUpdateDailyWeather(resort) {
       tempDataObject.time = 'PM';
       tempDailyWeather.push(tempDataObject);
     }
-    
+
     try {
       // Update or create database
       tempDailyWeather.forEach(async (forecast) => {

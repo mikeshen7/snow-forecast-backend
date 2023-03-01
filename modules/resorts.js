@@ -28,10 +28,10 @@ async function dbCreateResort(resort) {
     await dbReadAllResort();
 
     // get hourly weather
-    // await hourlyWeather.apiReadHourlyWeather(resort.name);
+    setTimeout(async () => await hourlyWeather.apiReadHourlyWeather(resort.name), 30000);
 
     // calc daily weather
-    // await dailyWeather.dbUpdateDailyWeather(resort.name);
+    setTimeout(async () => await dailyWeather.dbUpdateDailyWeather(resort.name), 30000);
 
     return createdResort;
 
