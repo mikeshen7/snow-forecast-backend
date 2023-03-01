@@ -25,7 +25,7 @@ async function dbCreateResort(resort) {
     let createdResort = await resortDb.create(resort);
 
     // update resorts cache
-    dbReadAllResort();
+    await dbReadAllResort();
 
     // get hourly weather
     // await hourlyWeather.apiReadHourlyWeather(resort.name);
@@ -129,7 +129,7 @@ async function endpointUpdateResort(request, response, next) {
     let resortName = request.params.resortName;
     let resortData = request.body;
     let updatedResort = await resortDb.findOneAndUpdate({ name: resortName }, resortData, { new: true, overwrite: true });
-    dbReadAllResort();
+    await dbReadAllResort();
     response.status(200).send(updatedResort);
 
   } catch (error) {
@@ -142,7 +142,7 @@ async function endpointRemoveResort(request, response, next) {
   try {
     let resortName = request.params.resortName;
     let deletedResult = await resortDb.findOneAndDelete({ name: resortName });
-    dbReadAllResort();
+    await dbReadAllResort();
 
     deletedResult === null
       ? response.status(200).send('Resort not found')
