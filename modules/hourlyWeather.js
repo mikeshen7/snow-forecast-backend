@@ -31,7 +31,7 @@ async function updateHourlyWeatherSchedule() {
     resortIndex >= resorts.length - 1
       ? resortIndex = 0
       : resortIndex++
-  }, 3600000)
+  }, 1800000)
 }
 
 async function apiReadHourlyWeather(resortName) {
